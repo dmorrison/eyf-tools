@@ -1,36 +1,25 @@
-import json
-import sys
-
 import numpy as np
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+from io import BytesIO
+import base64
+
 def handler(event, context):
-    args = {
-        'originalLoanAmount': 200000,
-        'currentMortgageRate': 4.00,
-        'currentMortgageLengthInYears': 30,
-        'remainingMonthsOnCurrentMortgage': 300,
-        'newLoanAmount': 180000,
-        'newInterestRate': 3.50,
-        'newMortgageLengthInYears': 30,
-        'closingCosts': 2500,
-        'initialLiquidBalance': 250000,
-        'rateOfReturn': 7
-    }
-    calculator = RefiVsInvestCalculator(args)
+    print("event.queryStringParameters: ", event["queryStringParameters"])
+    calculator = RefiVsInvestCalculator(event["queryStringParameters"])
     calculator.calculate_balances_over_time()
 
     return {
         'statusCode': 200,
-        # 'body': json.dumps('Hello from AWS Lambda using Python' + sys.version + '!')
-        'body': json.dumps({
-            'myMessage': 'Let\'s check out the event param.',
+        'body': {
+            'myMessage': 'Try generating the image again.',
             'endingLiquidBalanceOverTime': calculator.ending_liquid_balance_over_time,
-            'event': event,
-        }),
+            # 'event': event,
+            'balancePlotBase64Img': calculator.get_balances_plot_base64()
+        },
     }
 
 
