@@ -18,29 +18,32 @@ import matplotlib.pyplot as plt
 OUTPUT_DIR = "Output"
 
 class MortgageRefinanceDecision:
-    def __init__(self, output_mode):
-        print('In mode:', output_mode)
+    def __init__(self, params, output_mode):
+        print('params:', params)
+        self.params = params
+
+        print('output_mode:', output_mode)
         self.output_mode = output_mode
     
+    # Compute and plot liquid account balance over time for different mortgage refinance / non-refinance options
+    # Include investment return opportunity costs (especially for closing costs) in all options
+    #
+    # Formula for computing monthly payments for given interest and loan amount:
+    # From https://www.thebalance.com/loan-payment-calculations-315564 and http://www.oxfordmathcenter.com/drupal7/node/434:
+    # P = L * ( r*(1+r)^n ) / ( (1+r)^n - 1)
+    # P = monthly payment
+    # L = Loan amount
+    # r = monthly interest rate = annual interest rate / 12 (not actually correct, but every source I find says this)
+    # n = number of payments = number of years * 12 (360 for 30 year mortgage)
     def calculate(self):
         if self.output_mode == OutputMode.LOCAL_FILES:
             if os.path.exists(OUTPUT_DIR):
                 shutil.rmtree(OUTPUT_DIR)
             os.makedirs(OUTPUT_DIR)
 
-        # Compute and plot liquid account balance over time for different mortgage refinance / non-refinance options
-        # Include investment return opportunity costs (especially for closing costs) in all options
-
-        # Formula for computing monthly payments for given interest and loan amount:
-        # From https://www.thebalance.com/loan-payment-calculations-315564 and http://www.oxfordmathcenter.com/drupal7/node/434:
-        # P = L * ( r*(1+r)^n ) / ( (1+r)^n - 1)
-        # P = monthly payment
-        # L = Loan amount
-        # r = monthly interest rate = annual interest rate / 12 (not actually correct, but every source I find says this)
-        # n = number of payments = number of years * 12 (360 for 30 year mortgage)
-
         #############################################################################################################
         # Inputs
+        p = self.params
 
         # * Total closing cost
         # * Mortgage rate
@@ -49,39 +52,39 @@ class MortgageRefinanceDecision:
 
         # The initial liquid cash balance doesn't impact the difference in balances, so just use a reasonable number
         # that is larger than the refi cost (otherwise it turns negative)
-        InitialLiquidBalance = 200000
+        InitialLiquidBalance = p["InitialLiquidBalance"]
         # Original loan amount
-        OriginalLoanAmount = 189600
+        OriginalLoanAmount = p["OriginalLoanAmount"]
         # Current mortgage rate
-        CurrentMortgageRate = 0.0475
+        CurrentMortgageRate = p["CurrentMortgageRate"]
         # Number of months of current mortgage
-        NumMonths = 360 # 30 year mortgage
+        NumMonths = p["NumMonths"] # 30 year mortgage
         # Loan Origination Date 09/25/13, Original Maturity Date 10/2043
         # Current month: Nov 2019
         # So 11 months, plus 2020 to 2043
-        RemainingNumberOfMonthsOnCurrentLoan = 11+(2043-2020)*12
+        RemainingNumberOfMonthsOnCurrentLoan = p["RemainingNumberOfMonthsOnCurrentLoan"]
 
-        NewLoanAmount = 169455.74
-        NewInterestRate = 0.038 # Annual, for 30 year mortgage
-        ReFiCost = 4345 # https://www.valuepenguin.com/mortgages/average-cost-of-refinance
+        NewLoanAmount = p["NewLoanAmount"]
+        NewInterestRate = p["NewInterestRate"] # Annual, for 30 year mortgage
+        ReFiCost = p["ReFiCost"] # https://www.valuepenguin.com/mortgages/average-cost-of-refinance
         # Possibly more accurate: 235+480+0.01*NewLoanAmount+255+275+750+733+138+58
-        NumMonthsNewLoan = 360 # 30 year mortgage
+        NumMonthsNewLoan = p["NumMonthsNewLoan"] # 30 year mortgage
 
         # Assumed rate of return for investments in index funds
-        MarketReturnRate = 0.07 #0.04 #0.00 # annual
+        MarketReturnRate = p["MarketReturnRate"] #0.04 #0.00 # annual
 
         # Evaluating cash-out refinance, using the additional funds to invest in the market:
-        ShowCashOutRefi = True
+        ShowCashOutRefi = p["ShowCashOutRefi"]
         # If house is worth ~350k, and you get a mortgage for 80% of that: 280k
-        NewLoanAmountV2 = 0.8*350000
+        NewLoanAmountV2 = p["NewLoanAmountV2"]
         NewLoanV2minusCurrentBalance = NewLoanAmountV2-NewLoanAmount
 
         # Evaluating 15 year mortgage
-        Show15yearRefi = True
+        Show15yearRefi = p["Show15yearRefi"]
         # NewLoanAmount same as 30 year refi
-        New15yearInterestRate = 0.032
+        New15yearInterestRate = p["New15yearInterestRate"]
         # ReFiCost same as 30 year refi
-        NumMonthsNewLoan15year = 180 # 15 year mortgage
+        NumMonthsNewLoan15year = p["NumMonthsNewLoan15year"] # 15 year mortgage
         # MarketReturnRate as 30 year refi
 
         #############################################################################################################
@@ -125,7 +128,6 @@ class MortgageRefinanceDecision:
             else:
                 LiquidBalance[ct+1] = LiquidBalance[ct] * (1+MarketReturnRate/12)  # simplification dividing by 12
 
-
         #############################################################################################################
         # Result of refinancing, over the next 30 years (360 months)
         LiquidBalanceRefi = np.zeros(360+1)
@@ -160,7 +162,6 @@ class MortgageRefinanceDecision:
                     LiquidBalanceRefi15yearRefi[ct+1] = LiquidBalanceRefi15yearRefi[ct+1] * (1+MarketReturnRate/12) # simplification dividing by 12
                 else:
                     LiquidBalanceRefi15yearRefi[ct+1] = LiquidBalanceRefi15yearRefi[ct] * (1+MarketReturnRate/12)  # simplification dividing by 12
-
 
         #############################################################################################################
         # Computing break even point, max savings, output to text file
@@ -325,5 +326,40 @@ class MortgageRefinanceDecision:
             plt.close()
 
 if __name__ == '__main__':
-    calc = MortgageRefinanceDecision(OutputMode.LOCAL_FILES)
+    params = {
+        'InitialLiquidBalance': 200000,
+        'OriginalLoanAmount': 189600,
+        'CurrentMortgageRate': 0.0475,
+        'NumMonths': 360, # 30 year mortgage
+
+        # Loan Origination Date 09/25/13, Original Maturity Date 10/2043
+        # Current month: Nov 2019
+        # So 11 months, plus 2020 to 2043
+        'RemainingNumberOfMonthsOnCurrentLoan': 11+(2043-2020)*12,
+
+        'NewLoanAmount': 169455.74,
+        'NewInterestRate': 0.038, # Annual, for 30 year mortgage
+        'NumMonthsNewLoan': 360, # 30 year mortgage
+
+        'ReFiCost': 4345, # https://www.valuepenguin.com/mortgages/average-cost-of-refinance
+        # Possibly more accurate: 235+480+0.01*NewLoanAmount+255+275+750+733+138+58
+
+        # Assumed rate of return for investments in index funds
+        'MarketReturnRate': 0.07, #0.04 #0.00 # annual
+
+        # Evaluating cash-out refinance, using the additional funds to invest in the market:
+        'ShowCashOutRefi': True,
+        # If house is worth ~350k, and you get a mortgage for 80% of that: 280k
+        'NewLoanAmountV2': 0.8*350000,
+
+        # Evaluating 15 year mortgage
+        'Show15yearRefi': True,
+        # NewLoanAmount same as 30 year refi
+        'New15yearInterestRate': 0.032,
+        # ReFiCost same as 30 year refi
+        'NumMonthsNewLoan15year': 180, # 15 year mortgage
+        # MarketReturnRate as 30 year refi
+    }
+
+    calc = MortgageRefinanceDecision(params, OutputMode.LOCAL_FILES)
     calc.calculate()
