@@ -1,9 +1,11 @@
 FROM public.ecr.aws/lambda/python:3.9
 
-RUN pip install numpy==1.19.4 matplotlib==3.3.3
+COPY requirements.txt ${LAMBDA_TASK_ROOT}
+RUN pip install -r requirements.txt
 
 # Copy function code
-COPY app.py ${LAMBDA_TASK_ROOT}
+COPY AWSLambda/app.py ${LAMBDA_TASK_ROOT}
+COPY RefiVsInvestCalculator.py ${LAMBDA_TASK_ROOT}
 
 # Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
 CMD [ "app.handler" ]
