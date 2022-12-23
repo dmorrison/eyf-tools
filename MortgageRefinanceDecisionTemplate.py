@@ -5,20 +5,29 @@
 
 # MortgageRefinanceDecisionTemplate.py
 
+import os
+import shutil
 import numpy as np
+from output_mode import OutputMode
 
 import matplotlib
 matplotlib.use('TkAgg')
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from output_mode import OutputMode
+OUTPUT_DIR = "Output"
 
 class MortgageRefinanceDecision:
-    def __init__(self, output_mode=OutputMode.LOCAL_FILES):
+    def __init__(self, output_mode):
         print('In mode:', output_mode)
+        self.output_mode = output_mode
     
     def calculate(self):
+        if self.output_mode == OutputMode.LOCAL_FILES:
+            if os.path.exists(OUTPUT_DIR):
+                shutil.rmtree(OUTPUT_DIR)
+            os.makedirs(OUTPUT_DIR)
+
         # Compute and plot liquid account balance over time for different mortgage refinance / non-refinance options
         # Include investment return opportunity costs (especially for closing costs) in all options
 
@@ -74,9 +83,6 @@ class MortgageRefinanceDecision:
         # ReFiCost same as 30 year refi
         NumMonthsNewLoan15year = 180 # 15 year mortgage
         # MarketReturnRate as 30 year refi
-
-        # Output file
-        OutputFile = 'Output.txt'
 
         #############################################################################################################
         # Calculating different mortgage rates
@@ -169,7 +175,7 @@ class MortgageRefinanceDecision:
         BreakEvenYear = float(ct)/12.0
 
         # Print to output file
-        file=open(OutputFile,'w')
+        file=open(os.path.join(OUTPUT_DIR, "Output.txt"),'w')
         file.write('Break Even Month = '+str(BreakEvenMonth)+'\n')
         file.write('Break Even Year = '+str(round(BreakEvenYear,2))+'\n')
         file.write('End Balance Diff (30 year Refi minus NoRefi) = $'+str(round(BalanceDiff[-1],2))+'K\n')
@@ -212,7 +218,7 @@ class MortgageRefinanceDecision:
         # tight layout
         plt.tight_layout()
         # Save plot
-        plt.savefig('BalanceComparison.png')
+        plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceComparison.png'))
         # close plot
         plt.close()
 
@@ -237,7 +243,7 @@ class MortgageRefinanceDecision:
         # tight layout
         plt.tight_layout()
         # Save plot
-        plt.savefig('BalanceDifference.png')
+        plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference.png'))
         # close plot
         plt.close()
 
@@ -263,7 +269,7 @@ class MortgageRefinanceDecision:
             # tight layout
             plt.tight_layout()
             # Save plot
-            plt.savefig('BalanceDifferenceCashOutRefi.png')
+            plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifferenceCashOutRefi.png'))
             # close plot
             plt.close()
 
@@ -289,7 +295,7 @@ class MortgageRefinanceDecision:
             # tight layout
             plt.tight_layout()
             # Save plot
-            plt.savefig('BalanceDifference15yearRefi.png')
+            plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference15yearRefi.png'))
             # close plot
             plt.close()
 
@@ -314,10 +320,10 @@ class MortgageRefinanceDecision:
             # tight layout
             plt.tight_layout()
             # Save plot
-            plt.savefig('BalanceDifference30vs15yearRefi.png')
+            plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference30vs15yearRefi.png'))
             # close plot
             plt.close()
 
 if __name__ == '__main__':
-    calc = MortgageRefinanceDecision()
+    calc = MortgageRefinanceDecision(OutputMode.LOCAL_FILES)
     calc.calculate()
