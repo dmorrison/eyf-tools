@@ -8,22 +8,21 @@
 import os
 import shutil
 import numpy as np
-from output_mode import OutputMode
+import io
+import base64
+from PIL import Image
 
 import matplotlib
-matplotlib.use('TkAgg')
-# matplotlib.use('Agg')
+# matplotlib.use('TkAgg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 OUTPUT_DIR = "Output"
 
 class MortgageRefinanceDecision:
-    def __init__(self, params, output_mode):
+    def __init__(self, params):
         print('params:', params)
         self.params = params
-
-        print('output_mode:', output_mode)
-        self.output_mode = output_mode
     
     # Compute and plot liquid account balance over time for different mortgage refinance / non-refinance options
     # Include investment return opportunity costs (especially for closing costs) in all options
@@ -35,20 +34,21 @@ class MortgageRefinanceDecision:
     # L = Loan amount
     # r = monthly interest rate = annual interest rate / 12 (not actually correct, but every source I find says this)
     # n = number of payments = number of years * 12 (360 for 30 year mortgage)
-    def calculate(self):
-        if self.output_mode == OutputMode.LOCAL_FILES:
-            if os.path.exists(OUTPUT_DIR):
-                shutil.rmtree(OUTPUT_DIR)
-            os.makedirs(OUTPUT_DIR)
+    def calculate(self):        
+        results = {
+            'text': {},
+            'images': {}
+        }
 
         #############################################################################################################
         # Inputs
-        p = self.params
 
         # * Total closing cost
         # * Mortgage rate
         # * Size of the loan (at most 80% of the value of the house, so that can have tradition mortgage with 20% equity)
         # * Assumed annual return for the market
+
+        p = self.params
 
         # The initial liquid cash balance doesn't impact the difference in balances, so just use a reasonable number
         # that is larger than the refi cost (otherwise it turns negative)
@@ -175,19 +175,15 @@ class MortgageRefinanceDecision:
         BreakEvenMonth = ct
         BreakEvenYear = float(ct)/12.0
 
-        # Print to output file
-        file=open(os.path.join(OUTPUT_DIR, "Output.txt"),'w')
-        file.write('Break Even Month = '+str(BreakEvenMonth)+'\n')
-        file.write('Break Even Year = '+str(round(BreakEvenYear,2))+'\n')
-        file.write('End Balance Diff (30 year Refi minus NoRefi) = $'+str(round(BalanceDiff[-1],2))+'K\n')
+        results['text']['Break Even Month'] = BreakEvenMonth
+        results['text']['Break Even Year'] = round(BreakEvenYear,2)
+        results['text']['End Balance Diff (30 year Refi minus NoRefi)'] = '$' + str(round(BalanceDiff[-1],2)) + 'K'
         if ShowCashOutRefi:
-            file.write('End Balance Diff (Cash-Out Refi minus NoRefi) = $'+str(round(LiquidBalanceRefiV2[-1]/1000 -
-                                                                                    LiquidBalance[-1]/1000,2))+'K\n')
+            results['text']['End Balance Diff (Cash-Out Refi minus NoRefi))'] = \
+                '$' + str(round(LiquidBalanceRefiV2[-1]/1000 - LiquidBalance[-1]/1000,2)) + 'K'
         if Show15yearRefi:
-            file.write('End Balance Diff (15 year Refi minus NoRefi) = $'+str(round(LiquidBalanceRefi15yearRefi[-1]/1000 -
-                                                                                    LiquidBalance[-1]/1000,2))+'K\n')
-
-        file.close()
+            results['text']['End Balance Diff (15 year Refi minus NoRefi))'] = \
+                '$' + str(round(LiquidBalanceRefi15yearRefi[-1]/1000 - LiquidBalance[-1]/1000,2)) + 'K'
 
 
         #############################################################################################################
@@ -218,112 +214,121 @@ class MortgageRefinanceDecision:
         plt.legend(fontsize=15)
         # tight layout
         plt.tight_layout()
+
         # Save plot
-        plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceComparison.png'))
+        figfile = io.BytesIO()
+        plt.savefig(figfile, format='png')
+        figfile.seek(0)
+        balances_plot = base64.b64encode(figfile.getvalue())
+        balances_plot = str(balances_plot)[2:-1] # Remove leading "b'" and trailing "'"
+        results['images']['Balance Comparison'] = balances_plot
+
         # close plot
         plt.close()
 
 
-        # Plotting balance difference: Refi Minus No Refi
-        fig1 = plt.figure(1)
-        MonthArray = np.arange(0,361)
-        YearArray = MonthArray/12
-        plt.plot(YearArray,LiquidBalanceRefi/1000 - LiquidBalance/1000,'-')
-        # Add title
-        plt.title('Balance: 30 Year Refi Minus No Refi',fontsize=16)
-        # x axis label
-        plt.xlabel('Years',fontsize=15)
-        # y axis label
-        plt.ylabel('Balance ($k)',fontsize=15)
-        plt.gca().tick_params(axis='both', which='major', labelsize=12)
-        # add x-axis and y-axis limits if needed
-        # Turn grid on
-        plt.grid()
-        # legend
-        # plt.legend(fontsize=15)
-        # tight layout
-        plt.tight_layout()
-        # Save plot
-        plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference.png'))
-        # close plot
-        plt.close()
+        # # Plotting balance difference: Refi Minus No Refi
+        # fig1 = plt.figure(1)
+        # MonthArray = np.arange(0,361)
+        # YearArray = MonthArray/12
+        # plt.plot(YearArray,LiquidBalanceRefi/1000 - LiquidBalance/1000,'-')
+        # # Add title
+        # plt.title('Balance: 30 Year Refi Minus No Refi',fontsize=16)
+        # # x axis label
+        # plt.xlabel('Years',fontsize=15)
+        # # y axis label
+        # plt.ylabel('Balance ($k)',fontsize=15)
+        # plt.gca().tick_params(axis='both', which='major', labelsize=12)
+        # # add x-axis and y-axis limits if needed
+        # # Turn grid on
+        # plt.grid()
+        # # legend
+        # # plt.legend(fontsize=15)
+        # # tight layout
+        # plt.tight_layout()
+        # # Save plot
+        # plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference.png'))
+        # # close plot
+        # plt.close()
 
 
-        # Plotting balance difference: Refi at 80% Home Value Minus No Refi
-        if ShowCashOutRefi:
-            fig1 = plt.figure(1)
-            MonthArray = np.arange(0,361)
-            YearArray = MonthArray/12
-            plt.plot(YearArray,(LiquidBalanceRefiV2 - LiquidBalance)/1000,'-')
-            # Add title
-            plt.title('Balance: Refi (80% Home Value) Minus No Refi',fontsize=16)
-            # x axis label
-            plt.xlabel('Years',fontsize=15)
-            # y axis label
-            plt.ylabel('Balance ($k)',fontsize=15)
-            plt.gca().tick_params(axis='both', which='major', labelsize=12)
-            # add x-axis and y-axis limits if needed
-            # Turn grid on
-            plt.grid()
-            # legend
-            # plt.legend(fontsize=15)
-            # tight layout
-            plt.tight_layout()
-            # Save plot
-            plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifferenceCashOutRefi.png'))
-            # close plot
-            plt.close()
+        # # Plotting balance difference: Refi at 80% Home Value Minus No Refi
+        # if ShowCashOutRefi:
+        #     fig1 = plt.figure(1)
+        #     MonthArray = np.arange(0,361)
+        #     YearArray = MonthArray/12
+        #     plt.plot(YearArray,(LiquidBalanceRefiV2 - LiquidBalance)/1000,'-')
+        #     # Add title
+        #     plt.title('Balance: Refi (80% Home Value) Minus No Refi',fontsize=16)
+        #     # x axis label
+        #     plt.xlabel('Years',fontsize=15)
+        #     # y axis label
+        #     plt.ylabel('Balance ($k)',fontsize=15)
+        #     plt.gca().tick_params(axis='both', which='major', labelsize=12)
+        #     # add x-axis and y-axis limits if needed
+        #     # Turn grid on
+        #     plt.grid()
+        #     # legend
+        #     # plt.legend(fontsize=15)
+        #     # tight layout
+        #     plt.tight_layout()
+        #     # Save plot
+        #     plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifferenceCashOutRefi.png'))
+        #     # close plot
+        #     plt.close()
 
 
-        # Plotting balance difference: 15 year Refi Minus No Refi
-        if Show15yearRefi:
-            fig1 = plt.figure(1)
-            MonthArray = np.arange(0,361)
-            YearArray = MonthArray/12
-            plt.plot(YearArray,LiquidBalanceRefi15yearRefi/1000-LiquidBalance/1000,'-') #,label='No Refi Minus Refi')
-            # Add title
-            plt.title('Balance: 15 Year Refi Minus No Refi',fontsize=16)
-            # x axis label
-            plt.xlabel('Years',fontsize=15)
-            # y axis label
-            plt.ylabel('Balance ($k)',fontsize=15)
-            plt.gca().tick_params(axis='both', which='major', labelsize=12)
-            # add x-axis and y-axis limits if needed
-            # Turn grid on
-            plt.grid()
-            # legend
-            # plt.legend(fontsize=15)
-            # tight layout
-            plt.tight_layout()
-            # Save plot
-            plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference15yearRefi.png'))
-            # close plot
-            plt.close()
+        # # Plotting balance difference: 15 year Refi Minus No Refi
+        # if Show15yearRefi:
+        #     fig1 = plt.figure(1)
+        #     MonthArray = np.arange(0,361)
+        #     YearArray = MonthArray/12
+        #     plt.plot(YearArray,LiquidBalanceRefi15yearRefi/1000-LiquidBalance/1000,'-') #,label='No Refi Minus Refi')
+        #     # Add title
+        #     plt.title('Balance: 15 Year Refi Minus No Refi',fontsize=16)
+        #     # x axis label
+        #     plt.xlabel('Years',fontsize=15)
+        #     # y axis label
+        #     plt.ylabel('Balance ($k)',fontsize=15)
+        #     plt.gca().tick_params(axis='both', which='major', labelsize=12)
+        #     # add x-axis and y-axis limits if needed
+        #     # Turn grid on
+        #     plt.grid()
+        #     # legend
+        #     # plt.legend(fontsize=15)
+        #     # tight layout
+        #     plt.tight_layout()
+        #     # Save plot
+        #     plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference15yearRefi.png'))
+        #     # close plot
+        #     plt.close()
 
-        # Plotting balance difference: 30 year Refi Minus 15 year Refi
-        if Show15yearRefi:
-            fig1 = plt.figure(1)
-            MonthArray = np.arange(0,361)
-            YearArray = MonthArray/12
-            plt.plot(YearArray,LiquidBalanceRefi/1000-LiquidBalanceRefi15yearRefi/1000,'-') #,label='No Refi Minus Refi')
-            # Add title
-            plt.title('Balance: 30 year Refi Minus 15 Year Refi',fontsize=16)
-            # x axis label
-            plt.xlabel('Years',fontsize=15)
-            # y axis label
-            plt.ylabel('Balance ($k)',fontsize=15)
-            plt.gca().tick_params(axis='both', which='major', labelsize=12)
-            # add x-axis and y-axis limits if needed
-            # Turn grid on
-            plt.grid()
-            # legend
-            # plt.legend(fontsize=15)
-            # tight layout
-            plt.tight_layout()
-            # Save plot
-            plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference30vs15yearRefi.png'))
-            # close plot
-            plt.close()
+        # # Plotting balance difference: 30 year Refi Minus 15 year Refi
+        # if Show15yearRefi:
+        #     fig1 = plt.figure(1)
+        #     MonthArray = np.arange(0,361)
+        #     YearArray = MonthArray/12
+        #     plt.plot(YearArray,LiquidBalanceRefi/1000-LiquidBalanceRefi15yearRefi/1000,'-') #,label='No Refi Minus Refi')
+        #     # Add title
+        #     plt.title('Balance: 30 year Refi Minus 15 Year Refi',fontsize=16)
+        #     # x axis label
+        #     plt.xlabel('Years',fontsize=15)
+        #     # y axis label
+        #     plt.ylabel('Balance ($k)',fontsize=15)
+        #     plt.gca().tick_params(axis='both', which='major', labelsize=12)
+        #     # add x-axis and y-axis limits if needed
+        #     # Turn grid on
+        #     plt.grid()
+        #     # legend
+        #     # plt.legend(fontsize=15)
+        #     # tight layout
+        #     plt.tight_layout()
+        #     # Save plot
+        #     plt.savefig(os.path.join(OUTPUT_DIR, 'BalanceDifference30vs15yearRefi.png'))
+        #     # close plot
+        #     plt.close()
+
+        return results
 
 if __name__ == '__main__':
     params = {
@@ -361,5 +366,24 @@ if __name__ == '__main__':
         # MarketReturnRate as 30 year refi
     }
 
-    calc = MortgageRefinanceDecision(params, OutputMode.LOCAL_FILES)
-    calc.calculate()
+    calc = MortgageRefinanceDecision(params)
+    results = calc.calculate()
+    print('results: ', results)
+
+    # Clear the previous output dir (if present) and make a new one
+    if os.path.exists(OUTPUT_DIR):
+        shutil.rmtree(OUTPUT_DIR)
+    os.makedirs(OUTPUT_DIR)
+
+    # Save text results to a file
+    file=open(os.path.join(OUTPUT_DIR, "Output.txt"),'w')
+    for name, value in results['text'].items():
+        file.write(name + ' = ' + str(value) + '\n')
+    file.close()
+
+    # Save plots to files
+    for name, value in results['images'].items():
+        decoded_image = base64.b64decode(value)
+        binary_stream = io.BytesIO(decoded_image)
+        image = Image.open(binary_stream)
+        image.save(os.path.join(OUTPUT_DIR, name + '.png'))
