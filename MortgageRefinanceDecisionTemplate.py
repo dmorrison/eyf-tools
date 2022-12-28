@@ -369,7 +369,6 @@ if __name__ == '__main__':
 
     calc = MortgageRefinanceDecision(params)
     results = calc.calculate()
-    print('results: ', results)
 
     # Clear the previous output dir (if present) and make a new one
     if os.path.exists(OUTPUT_DIR):
