@@ -1,21 +1,17 @@
+import json
 from MortgageRefinanceDecisionTemplate import MortgageRefinanceDecision
-from output_mode import OutputMode
 
 def handler(event, context):
-    print("event: ", event)
-    print('POST body:', event['body'])
+    print("In Lambda handler. event: ", event)
 
-    params = event['body']
-    calculator = MortgageRefinanceDecision(params, OutputMode.JSON)
+    # The body for a post comes in as a JSON string. This converts it
+    # to a dict.
+    params = json.loads(event['body'])
+
+    calculator = MortgageRefinanceDecision(params)
     results = calculator.calculate()
 
     return {
         'statusCode': 200,
-        # 'body': {
-        #     # 'msgFromHandler': 'Trying to send POST params.',
-        #     # 'event': event,
-        #     'endingLiquidBalanceOverTime': calculator.ending_liquid_balance_over_time,
-        #     # 'balancePlotBase64Img': calculator.get_balances_plot_base64()
-        # },
         'body': results,
     }

@@ -29,7 +29,7 @@ def getPlotBase64Image():
 
 class MortgageRefinanceDecision:
     def __init__(self, params):
-        print('params:', params)
+        print('In MortgageRefinanceDecision constructor. params:', params)
         self.params = params
     
     # Compute and plot liquid account balance over time for different mortgage refinance / non-refinance options
@@ -222,10 +222,8 @@ class MortgageRefinanceDecision:
         plt.legend(fontsize=15)
         # tight layout
         plt.tight_layout()
-
         # Save plot
         results['images']['Balance Comparison'] = getPlotBase64Image()
-
         # close plot
         plt.close()
 
