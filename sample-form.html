@@ -4,28 +4,128 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>Static Template</title>
+    <title>Engineering Your FI Form Example</title>
+    <link href="style.css" rel="stylesheet" />
   </head>
   <body>
     <form>
-      <label for="name">Name:</label><br />
-      <input type="text" id="name" name="name" /><br />
-      <label for="email">Email:</label><br />
-      <input type="email" id="email" name="email" /><br />
-      <label for="password">Password:</label><br />
-      <input type="password" id="password" name="password" /><br />
-      <label for="bio">Bio:</label><br />
-      <textarea id="bio" name="bio"></textarea><br />
-      <label for="image">Image:</label><br />
-      <input type="file" id="image" name="image" /><br /><br />
-      <input type="submit" value="Submit" />
+      <h1>Mortgage Refinance Decision</h1>
+
+      <fieldset>
+        <legend>Basic Info</legend>
+
+        <label for="InitialLiquidBalance">Initial Liquid Balance:</label>
+        <input type="number" id="InitialLiquidBalance" value="200000" />
+
+        <label for="OriginalLoanAmount">Original Loan Amount:</label>
+        <input type="number" id="OriginalLoanAmount" value="189600" />
+
+        <label for="CurrentMortgageRate">Current Mortgage Rate:</label>
+        <input type="number" id="CurrentMortgageRate" value="0.0475" />
+
+        <label for="OriginalLoanAmount">Original Loan Amount:</label>
+        <input type="number" id="NumMonths" value="360" />
+
+        <label for="RemainingNumberOfMonthsOnCurrentLoan">
+          Remaining Number of Months on Current Loan:
+        </label>
+        <input
+          type="number"
+          id="RemainingNumberOfMonthsOnCurrentLoan"
+          value="287"
+        />
+
+        <label for="NewLoanAmount">New Loan Amount:</label>
+        <input type="number" id="NewLoanAmount" value="169455.74" />
+
+        <label for="NewInterestRate">New Interest Rate:</label>
+        <input type="number" id="NewInterestRate" value="0.038" />
+
+        <label for="NumMonthsNewLoan">Num Months New Loan:</label>
+        <input type="number" id="NumMonthsNewLoan" value="360" />
+
+        <label for="ReFiCost">ReFi Cost:</label>
+        <input type="number" id="ReFiCost" value="4345" />
+
+        <label for="MarketReturnRate">Market Return Rate:</label>
+        <input type="number" id="MarketReturnRate" value="0.07" />
+      </fieldset>
+
+      <fieldset>
+        <legend>Cash-Out Refinance</legend>
+
+        <input type="checkbox" id="ShowCashOutRefi" checked />
+        <label for="ShowCashOutRefi" class="for-checkbox">
+          Show Cash-Out Refinance?
+        </label>
+        <br />
+        <br />
+
+        <label for="NewLoanAmountV2">New Loan Amount for Refinance:</label>
+        <input type="number" id="NewLoanAmountV2" value="280000" />
+      </fieldset>
+
+      <fieldset>
+        <legend>15-Year Refinance</legend>
+
+        <input type="checkbox" id="Show15yearRefi" checked />
+        <label for="Show15yearRefi" class="for-checkbox">
+          Show 15-Year Refinance?
+        </label>
+        <br />
+        <br />
+
+        <label for="New15yearInterestRate">New 15-Year Interest Rate:</label>
+        <input type="number" id="New15yearInterestRate" value="0.032" />
+      </fieldset>
+
+      <button type="submit">Calculate</button>
     </form>
 
-    <img id="test-image" />
+    <div id="results">
+      <h1>Text Results</h1>
+      <div id="text-results"></div>
+
+      <h1>Image Results</h1>
+      <div id="image-results"></div>
+    </div>
 
     <script>
-      function logSubmit(event) {
-        console.log(`Form Submitted! Time stamp: ${event.timeStamp}`);
+      function handleSubmit(event) {
+        console.log(`Form submitted.`);
+        event.preventDefault();
+
+        // Disable the submit button.
+        const submitBtn = document.querySelector('button[type="submit"]');
+        submitBtn.setAttribute("disabled", "");
+        submitBtn.textContent = "Loading...";
+
+        // Clear any previous results.
+        const textResultsContainer = document.querySelector("#text-results");
+        textResultsContainer.innerHTML = "";
+        const imageResultsContainer = document.querySelector("#image-results");
+        imageResultsContainer.innerHTML = "";
+
+        const form = event.target;
+        const formElements = form.elements;
+        console.log(`formElements:`, formElements);
+
+        const params = {
+          NumMonthsNewLoan15year: 180
+        };
+
+        for (const e of formElements) {
+          // console.log(`tagName: ${e.tagName}; id: ${e.id}; type: ${e.type}`);
+          if (e.tagName === "INPUT") {
+            if (e.type === "number") {
+              params[e.id] = parseFloat(e.value);
+            } else if (e.type === "checkbox") {
+              params[e.id] = e.checked;
+            }
+          }
+        }
+
+        console.log(`params:`, params);
 
         const response = fetch(
           "https://pcqu45672xh4vva7orjff5rqly0epqhl.lambda-url.us-east-2.on.aws",
@@ -34,39 +134,36 @@
             headers: {
               "Content-Type": "text/plain" // Need to send as text/plain for CORS.
             },
-            body: JSON.stringify({
-              InitialLiquidBalance: 200000,
-              OriginalLoanAmount: 189600,
-              CurrentMortgageRate: 0.0475,
-              NumMonths: 360,
-              RemainingNumberOfMonthsOnCurrentLoan: 287,
-              NewLoanAmount: 169455.74,
-              NewInterestRate: 0.038,
-              NumMonthsNewLoan: 360,
-              ReFiCost: 4345,
-              MarketReturnRate: 0.07,
-              ShowCashOutRefi: true,
-              NewLoanAmountV2: 280000,
-              Show15yearRefi: true,
-              New15yearInterestRate: 0.032,
-              NumMonthsNewLoan15year: 180
-            })
+            body: JSON.stringify(params)
           }
         )
           .then((response) => response.json())
           .then((data) => {
+            document.querySelector("#results").style.display = "block";
+
+            // Display text results.
+            for (const [name, textResult] of Object.entries(data.text)) {
+              const p = document.createElement("p");
+              p.textContent = `${name}: ${textResult}`;
+              textResultsContainer.appendChild(p);
+            }
+
+            // Display images.
             for (const base64Image of Object.values(data.images)) {
               const img = document.createElement("img");
               img.src = `data:image/png;base64, ${base64Image}`;
-              document.body.appendChild(img);
+              imageResultsContainer.appendChild(img);
             }
-          });
 
-        event.preventDefault();
+            // Re-enable the submit button.
+            submitBtn.removeAttribute("disabled");
+            submitBtn.textContent = "Calculate";
+          })
+          .catch(console.error);
       }
 
       const form = document.querySelector("form");
-      form.addEventListener("submit", logSubmit);
+      form.addEventListener("submit", handleSubmit);
     </script>
   </body>
 </html>
